@@ -1,0 +1,12 @@
+{
+    "name": "bgorges/s3-diff-sync",
+    "require": {
+        "aws/aws-sdk-php": "^3.334"
+    },
+    "authors": [
+        {
+            "name": "Boone B Gorges",
+            "email": "boonebgorges@gmail.com"
+        }
+    ]
+}
