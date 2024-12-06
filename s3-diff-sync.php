@@ -157,6 +157,13 @@ function upload_directory( $prefix, $directory ) {
 			continue;
 		}
 
+		// Skip .log files.
+		if ( strpos( $file_info->getFilename(), '.log' ) !== false ) {
+			continue;
+		}
+
+		$file_count++;
+
 		$file_path = $file_info->getPathname();
 		$s3_key = str_replace( $wp_path . '/', '', $file_path );
 
