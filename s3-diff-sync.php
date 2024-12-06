@@ -135,49 +135,76 @@ function upload_site_directory( $blog_id ) {
 	upload_directory( $prefix, $blog_dir );
 }
 
-function upload_directory( $prefix, $directory ) {
-	global $bucket, $wp_path;
+function upload_directory($prefix, $directory) {
+    global $bucket, $wp_path;
 
-	// Fetch existing S3 keys
-	$s3_keys = listS3Keys( get_s3_client(), $bucket, $prefix );
-	$s3_key_set = array_flip( $s3_keys ); // Use a set for fast lookups
+    // Fetch existing S3 keys
+    $s3_keys = listS3Keys(get_s3_client(), $bucket, $prefix);
+    $s3_key_set = array_flip($s3_keys); // Use a set for fast lookups
 
-	// Iterate over local files
-	$directory_iterator = new \RecursiveDirectoryIterator( $directory );
-	$iterator = new \RecursiveIteratorIterator( $directory_iterator );
+    $file_count = 0; // Initialize the file counter
 
-	$file_count = 0;
-	foreach ( $iterator as $file_info ) {
-		if ( ! $file_info->isFile() ) {
-			continue;
-		}
+    // Define a custom recursive function
+    $process_directory = function ($current_dir) use (&$process_directory, &$file_count, $s3_key_set, $bucket, $wp_path, $prefix) {
+        if (!is_readable($current_dir)) {
+            echo "Skipping directory (not readable): $current_dir\n";
+            return;
+        }
 
-		// Don't upload .htaccess files
-		if ( strpos( $file_info->getFilename(), '.htaccess' ) !== false ) {
-			continue;
-		}
+        $entries = scandir($current_dir);
+        if ($entries === false) {
+            echo "Failed to read directory: $current_dir\n";
+            return;
+        }
 
-		// Skip .log files.
-		if ( strpos( $file_info->getFilename(), '.log' ) !== false ) {
-			continue;
-		}
+        foreach ($entries as $entry) {
+            // Skip `.` and `..`
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
 
-		$file_count++;
+            $full_path = $current_dir . DIRECTORY_SEPARATOR . $entry;
 
-		$file_path = $file_info->getPathname();
-		$s3_key = str_replace( $wp_path . '/', '', $file_path );
+            if (is_dir($full_path)) {
+                // Recurse into subdirectories
+                $process_directory($full_path);
+            } elseif (is_file($full_path)) {
+                try {
+                    // Don't upload .htaccess files
+                    if (strpos($entry, '.htaccess') !== false) {
+                        continue;
+                    }
 
-		// Upload if missing
-		if ( ! isset( $s3_key_set[ $s3_key ] ) ) {
-			uploadToS3( get_s3_client(), $bucket, $file_path, $s3_key );
-		} else {
-			log( "Exists in S3: $s3_key" );
-		}
-	}
+                    // Skip .log files
+                    if (strpos($entry, '.log') !== false) {
+                        continue;
+                    }
 
-	if ( ! $file_count ) {
-		log( "No files found in $directory" );
-	}
+                    $s3_key = str_replace($wp_path . '/', '', $full_path);
+
+                    // Upload if missing
+                    if (!isset($s3_key_set[$s3_key])) {
+                        uploadToS3(get_s3_client(), $bucket, $full_path, $s3_key);
+                    } else {
+                        echo "Exists in S3: $s3_key\n";
+                    }
+
+                    $file_count++; // Increment the file counter for each processed file
+                } catch (\Exception $e) {
+                    echo "Skipping file due to error: $full_path - " . $e->getMessage() . "\n";
+                }
+            }
+        }
+    };
+
+    // Start processing the root directory
+    $process_directory($directory);
+
+    if (!$file_count) {
+        log("No files found in $directory");
+    }
+
+    echo "Total files processed: $file_count\n"; // Output the total file count after processing
 }
 
 if ( $blog_id ) {
