@@ -146,6 +146,7 @@ function upload_directory( $prefix, $directory ) {
 	$directory_iterator = new \RecursiveDirectoryIterator( $directory );
 	$iterator = new \RecursiveIteratorIterator( $directory_iterator );
 
+	$file_count = 0;
 	foreach ( $iterator as $file_info ) {
 		if ( ! $file_info->isFile() ) {
 			continue;
@@ -165,6 +166,10 @@ function upload_directory( $prefix, $directory ) {
 		} else {
 			log( "Exists in S3: $s3_key" );
 		}
+	}
+
+	if ( ! $file_count ) {
+		log( "No files found in $directory" );
 	}
 }
 
