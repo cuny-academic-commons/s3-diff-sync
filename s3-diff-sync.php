@@ -212,5 +212,6 @@ if ( $blog_id ) {
 	return;
 }
 
+upload_directory( 'wp-content/uploads', $wp_path . "/wp-content/uploads" );
 upload_all_site_directories();
 
