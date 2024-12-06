@@ -70,7 +70,7 @@ function log( $message ) {
 	file_put_contents( $run_log, $message . "\n", FILE_APPEND );
 }
 
-function listS3Keys($s3, $bucket, $prefix) {
+function listS3Keys( $s3, $bucket, $prefix ) {
     $keys = [];
     $continuationToken = null;
 
